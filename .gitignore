@@ -1,0 +1,15 @@
+# 1단계 프로토타입 원본 — 실명 업장에 대한 주관 평가(만족도·한줄평)가 박혀 있어 공개 제외
+오늘의한잔_v9.html
+
+# 로컬 도구 설정 (Claude Code 권한 등)
+.claude/settings.local.json
+
+# 사용자가 '내보내기'로 받는 개인 백업 데이터 — 실수로도 커밋되지 않게 차단
+오늘의한잔_백업_*.json
+
+# OS / 에디터 부산물
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/
+.idea/

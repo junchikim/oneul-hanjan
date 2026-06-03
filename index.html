@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>음주기안 · 오늘의 한잔</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&display=swap');
+:root{
+  --page:#eceef1; --sheet:#fff; --hdr:#f5f6f8; --line:#d7dbe0; --line2:#c3c9d0;
+  --ink:#2c2f33; --sub:#6a7078; --dim:#aeb4bc;
+  --blue:#2f6db5; --blue2:#27598f; --bluebg:#eef4fb;
+  --stamp:#c0392b; --ok:#2f8a4e; --warn:#c47a1e;
+  --rh:42px; /* 통일 행 높이 */
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:var(--page);color:var(--ink);
+  font-family:"Malgun Gothic","맑은 고딕","Noto Sans KR",AppleSDGothicNeo,sans-serif;
+  max-width:412px;margin:0 auto;min-height:100vh;font-size:13px}
+.app{min-height:100vh;padding-bottom:20px}
+
+.toast{background:#fff;border:1px solid var(--line);border-radius:6px;margin:9px 11px 0;padding:9px 12px;
+  display:flex;align-items:center;justify-content:space-between;font-size:11.5px;color:var(--sub);box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.toast .x{color:var(--dim);cursor:pointer;font-size:13px;padding:0 2px}
+
+.fortune{background:#fff;border:1px solid var(--line);border-left:3px solid var(--stamp);border-radius:5px;
+  margin:9px 11px 0;padding:9px 12px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.fortune .fo-l{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.fortune .fo-cap{font-size:11px;font-weight:700;color:var(--stamp);letter-spacing:1px}
+.fortune .fo-stars{font-size:12px;color:#d6a13a;letter-spacing:1px}
+.fortune .fo-text{font-size:11.5px;color:var(--sub);line-height:1.5}
+.bar{background:#fff;border-bottom:1px solid var(--line);padding:9px 11px;display:flex;align-items:center;gap:7px;position:sticky;top:0;z-index:10}
+.btn{font-family:inherit;font-size:12.5px;height:34px;padding:0 15px;border:1px solid var(--line2);background:#fff;color:var(--ink);border-radius:4px;cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;font-weight:500}
+.btn:active{background:var(--hdr)}
+.btn.pri{background:var(--blue);border-color:var(--blue);color:#fff}
+.btn.pri:active{background:var(--blue2)}
+.btn.ghost{color:var(--sub)}
+.bar .sp{flex:1}
+
+.view{padding:13px 11px}
+.sheet{background:var(--sheet);border:1px solid var(--line);padding:18px 14px;box-shadow:0 1px 6px rgba(40,50,70,.06);position:relative}
+.sample{position:absolute;top:12px;right:12px;font-size:9px;color:#bfa6a0;border:1px solid #e3cfca;
+  border-radius:3px;padding:3px 7px;letter-spacing:1px;transform:rotate(-2deg);background:#fdf6f5}
+.title{text-align:center;font-size:23px;font-weight:900;letter-spacing:8px;padding:8px 0 18px;color:#222}
+
+/* ===== unified rows ===== */
+.metawrap{display:flex;gap:9px;align-items:stretch;margin-bottom:9px}
+.grid{flex:1;border:1px solid var(--line2);border-bottom:none}
+.grid .r{display:flex;border-bottom:1px solid var(--line2);min-height:var(--rh)}
+.grid .lbl{background:var(--hdr);width:76px;flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  font-size:12px;border-right:1px solid var(--line2);color:var(--ink);text-align:center;padding:4px}
+.grid .val{flex:1;display:flex;align-items:center;padding:7px 10px;background:#fff;min-width:0;font-size:12.5px}
+.grid .val.ex{color:var(--dim)}
+.grid .val.subj{color:var(--sub);font-size:12px;line-height:1.4}
+
+/* approval box matches meta height via stretch */
+.appr{flex-shrink:0;width:96px;border:1px solid var(--line2);display:flex}
+.appr .side{width:18px;background:var(--hdr);border-right:1px solid var(--line2);display:flex;align-items:center;justify-content:center;
+  writing-mode:vertical-rl;text-orientation:upright;font-size:10px;color:var(--sub);letter-spacing:2px}
+.appr .col{flex:1;display:flex;flex-direction:column}
+.appr .role{background:var(--hdr);border-bottom:1px solid var(--line2);font-size:9.5px;color:var(--sub);text-align:center;padding:4px 0}
+.appr .box{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding:6px 0;font-size:11px}
+.stamp{width:30px;height:30px;border:2px solid var(--stamp);border-radius:50%;color:var(--stamp);font-size:8px;font-weight:700;
+  display:none;align-items:center;justify-content:center;transform:rotate(-12deg);line-height:1.1;text-align:center}
+.stamp.on{display:flex;animation:st .35s cubic-bezier(.2,1.6,.4,1)}
+@keyframes st{0%{opacity:0;transform:rotate(-12deg) scale(2)}100%{opacity:.9;transform:rotate(-12deg) scale(1)}}
+
+/* form grid (full width) — same row system */
+.fgrid{border:1px solid var(--line2);border-bottom:none}
+.fgrid .r{display:flex;border-bottom:1px solid var(--line2);min-height:var(--rh)}
+.fgrid .lbl{background:var(--hdr);width:76px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:12px;border-right:1px solid var(--line2);text-align:center;padding:4px}
+.fgrid .val{flex:1;display:flex;align-items:center;padding:7px 9px;background:#fff;min-width:0}
+.fgrid .val.subj{color:var(--sub);font-size:12px;line-height:1.4}
+select.f{width:100%;padding:7px 9px;border:1px solid var(--line2);border-radius:2px;background:#fff;font-family:inherit;font-size:13px;color:var(--ink);appearance:none;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='10'><path d='M1 3l4 4 4-4' stroke='%236a7078' stroke-width='1.4' fill='none'/></svg>");background-repeat:no-repeat;background-position:right 9px center}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:6px 11px;border:1px solid var(--line2);border-radius:3px;background:#fff;color:var(--sub);font-size:12px;font-family:inherit;cursor:pointer;transition:all .13s}
+.chip:active{transform:scale(.95)}
+.chip.on{background:var(--blue);border-color:var(--blue);color:#fff;font-weight:500}
+.chip.bad.on{background:var(--stamp);border-color:var(--stamp);color:#fff}
+
+.bodybox{border:1px solid var(--line2);border-top:none;background:#fff;min-height:64px;padding:0}
+.bguide{color:var(--sub);font-size:12px;text-align:center;padding:22px 14px;line-height:1.7}
+.bguide b{color:var(--blue)}
+
+.submit-wrap{text-align:center;margin-top:14px}
+.submit{padding:12px 40px;font-size:14px;letter-spacing:5px;border:none;border-radius:3px;background:var(--blue);color:#fff;font-weight:500;font-family:inherit;cursor:pointer}
+.submit:active{background:var(--blue2)}
+
+/* results in body */
+.rbanner{text-align:center;font-size:12px;color:var(--stamp);font-weight:700;padding:9px 8px;border-bottom:1px solid var(--line2);letter-spacing:.5px}
+.acase{border-bottom:1px solid var(--line2)}
+.acase:last-child{border-bottom:none}
+.ac-h{display:flex;justify-content:space-between;align-items:center;background:var(--hdr);padding:6px 11px;border-bottom:1px solid var(--line)}
+.ac-rank{font-size:11px;font-weight:700;color:var(--blue);letter-spacing:1px}
+.ac-badge{font-size:10px;padding:2px 8px;border-radius:10px;font-weight:500}
+.ac-badge.again{background:rgba(47,138,78,.12);color:var(--ok)}
+.ac-badge.new{background:rgba(196,122,30,.14);color:var(--warn)}
+.ac-b{padding:11px 12px}
+.ac-name{font-size:16px;font-weight:700}
+.ac-cat{font-size:11px;color:var(--blue);margin-top:2px}
+.ac-loc{font-size:11.5px;color:var(--sub);margin-top:7px}
+.ac-tags{display:flex;gap:5px;flex-wrap:wrap;margin-top:8px}
+.tg{font-size:10.5px;padding:2px 7px;border-radius:2px;border:1px solid var(--line2);background:var(--hdr);color:var(--sub)}
+.tg.g{color:var(--ok);border-color:rgba(47,138,78,.3);background:rgba(47,138,78,.05)}
+.tg.b{color:var(--stamp);border-color:rgba(192,57,43,.3);background:rgba(192,57,43,.05)}
+.ac-why{margin-top:10px;padding:9px 10px;background:var(--bluebg);border:1px solid #d3e3f4;border-radius:2px;font-size:11.5px;line-height:1.55}
+.ac-why b{color:var(--blue)}
+
+/* list */
+.lsearch{display:flex;gap:6px;margin-bottom:9px;flex-wrap:wrap}
+.lsearch select,.lsearch input{flex:1;min-width:96px;font-size:12px;padding:7px 9px;border:1px solid var(--line2);border-radius:3px;background:#fff;font-family:inherit;color:var(--ink)}
+.lsearch input{flex-basis:100%}
+.lstat{font-size:11px;color:var(--sub);margin-bottom:8px}
+table.list{border-collapse:collapse;width:100%;background:#fff;border:1px solid var(--line2)}
+table.list th{background:var(--hdr);font-size:10.5px;font-weight:500;color:var(--sub);padding:7px 5px;border:1px solid var(--line2);white-space:nowrap}
+table.list td{font-size:11.5px;padding:8px 7px;border:1px solid var(--line);vertical-align:top}
+.li-name{font-weight:700;font-size:12.5px}.li-cat{font-size:10.5px;color:var(--blue)}.li-loc{font-size:10px;color:var(--sub);margin-top:3px}
+.empty{text-align:center;padding:28px 18px;color:var(--dim);font-size:12px;line-height:1.7;border:1px dashed var(--line2);background:#fff}
+.poolnote{font-size:10.5px;color:var(--dim);text-align:center;margin:10px 11px 0}
+
+.bar-title{font-size:13px;font-weight:700;color:var(--ink);margin-left:2px}
+.hide{display:none!important}
+
+/* ===== 취향 진단(온보딩) ===== */
+.quiz-overlay{position:fixed;inset:0;background:var(--page);z-index:100;overflow-y:auto;display:flex;justify-content:center}
+.quiz-wrap{width:100%;max-width:412px;padding:16px 11px 28px}
+.qsheet{background:var(--sheet);border:1px solid var(--line);padding:18px 14px 16px;box-shadow:0 1px 6px rgba(40,50,70,.06);position:relative}
+.qtitle{text-align:center;font-size:20px;font-weight:900;letter-spacing:6px;padding:6px 0 14px;color:#222}
+.qmeta{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--sub);margin-bottom:7px}
+.qskip{color:var(--dim);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.qskip:active{color:var(--sub)}
+.qprog{height:5px;background:var(--hdr);border:1px solid var(--line2);border-radius:3px;overflow:hidden;margin-bottom:16px}
+.qprog-bar{height:100%;background:var(--blue);transition:width .25s}
+.qq{font-size:15px;font-weight:700;color:var(--ink);line-height:1.45;margin-bottom:5px}
+.qhint{font-size:11px;color:var(--sub);margin-bottom:13px;line-height:1.5}
+.qchips{margin-bottom:20px}
+.qchips .chip{padding:9px 13px;font-size:13px}
+.qnav{display:flex;align-items:center;gap:7px}
+.qnav .btn{height:38px;padding:0 18px}
+.qnav .btn.pri{letter-spacing:2px}
+
+/* ===== 관리대장 탭 / 개인 기록 ===== */
+.list-tabs{display:flex;border:1px solid var(--line2);border-radius:3px;overflow:hidden;margin-bottom:10px}
+.list-tabs button{flex:1;padding:8px 0;border:none;border-right:1px solid var(--line2);background:#fff;font-family:inherit;font-size:12px;color:var(--sub);cursor:pointer}
+.list-tabs button:last-child{border-right:none}
+.list-tabs button.on{background:var(--blue);color:#fff;font-weight:500}
+.lsearch #b-add{height:auto;padding:7px 12px;flex:0 0 auto}
+.mini{font-family:inherit;font-size:10.5px;padding:4px 8px;margin:1px;border:1px solid var(--line2);background:#fff;color:var(--blue);border-radius:3px;cursor:pointer}
+.mini:active{background:var(--bluebg)}
+.reccard{border:1px solid var(--line2);background:#fff;padding:10px 11px;margin-bottom:8px;border-radius:2px}
+.rc-h{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+.rc-edit{font-family:inherit;font-size:11px;padding:3px 10px;border:1px solid var(--line2);background:var(--hdr);color:var(--sub);border-radius:3px;cursor:pointer;flex-shrink:0}
+.rc-meta{font-size:11px;color:var(--warn);margin-top:5px}
+.li-note{font-size:10.5px;color:var(--sub);font-style:italic;margin-top:5px}
+
+/* 등재 폼 */
+.recseg{display:flex;border:1px solid var(--line2);border-radius:3px;overflow:hidden;margin-bottom:12px}
+.recseg button{flex:1;padding:9px 0;border:none;border-right:1px solid var(--line2);background:#fff;font-family:inherit;font-size:12.5px;color:var(--sub);cursor:pointer}
+.recseg button:last-child{border-right:none}
+.recseg button.on{background:var(--blue);color:#fff;font-weight:500}
+.rf-in{width:100%;padding:7px 9px;border:1px solid var(--line2);border-radius:2px;background:#fff;font-family:inherit;font-size:13px;color:var(--ink);resize:vertical}
+.fgrid .val .chips{gap:5px}
+.fgrid .val .chip{padding:5px 9px;font-size:11.5px}
+.fgrid .r{min-height:auto}
+.rf-warn{font-size:10.5px;color:var(--stamp);background:#fdf6f5;border:1px solid #e3cfca;border-radius:2px;padding:7px 9px;margin-top:9px;line-height:1.5}
+
+/* ===== 안내·데이터 ===== */
+.info-sec{font-size:12px;color:var(--sub);line-height:1.65;border:1px solid var(--line2);background:#fff;padding:10px 12px;margin-bottom:9px}
+.info-sec b{color:var(--ink)}
+.info-h{font-size:12px;font-weight:700;color:var(--blue);margin-bottom:6px;letter-spacing:.5px}
+.info-desc{margin-bottom:9px}
+.info-btns{display:flex;flex-wrap:wrap;gap:7px}
+.info-btns .btn{flex:1;min-width:96px}
+.info-fine{font-size:10.5px;color:var(--dim);line-height:1.5;margin-top:4px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="fortune" id="fortune">
+    <div class="fo-l">
+      <div class="fo-cap">오늘의 음주운</div>
+      <div class="fo-stars" id="fo-stars"></div>
+    </div>
+    <div class="fo-text" id="fo-text"></div>
+  </div>
+
+  <div class="bar">
+    <button class="btn pri" id="b-submit" onclick="submitDraft()">결재요청</button>
+    <button class="btn ghost" id="b-back" onclick="nav('draft')" style="display:none">← 뒤로</button>
+    <span class="bar-title" id="bar-title" style="display:none">공용 업장 명부</span>
+    <span class="sp"></span>
+    <button class="btn ghost" id="b-quiz" onclick="openQuiz(true)">취향</button>
+    <button class="btn ghost" id="b-list" onclick="nav('list')">업장목록</button>
+    <button class="btn ghost" id="b-info" title="개인정보·데이터 안내">안내</button>
+  </div>
+
+  <!-- ===== 기안 ===== -->
+  <div class="view" id="v-draft">
+    <div class="sheet">
+      <div class="sample">예시 양식 · SAMPLE</div>
+      <div class="title">음 주 기 안</div>
+
+      <div class="metawrap">
+        <div class="grid">
+          <div class="r"><div class="lbl">기안자</div><div class="val ex">홍길동 (예시)</div></div>
+          <div class="r"><div class="lbl">소속</div><div class="val ex">○○팀 (예시)</div></div>
+          <div class="r"><div class="lbl">기안일</div><div class="val" id="kday"></div></div>
+          <div class="r"><div class="lbl">문서번호</div><div class="val ex" id="docno"></div></div>
+        </div>
+        <div class="appr">
+          <div class="side">신청</div>
+          <div class="col">
+            <div class="role">결재</div>
+            <div class="box">본인<div class="stamp" id="st-org">승인</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fgrid">
+        <div class="r"><div class="lbl">제목</div><div class="val subj" id="subj">— 음주지역 선택 시 자동 기재 —</div></div>
+        <div class="r"><div class="lbl">음주지역</div><div class="val"><select class="f" id="loc"></select></div></div>
+        <div class="r"><div class="lbl">동행자</div><div class="val"><div class="chips" id="sit"></div></div></div>
+        <div class="r"><div class="lbl">우대조건</div><div class="val"><div class="chips" id="good"></div></div></div>
+        <div class="r"><div class="lbl">반려사유</div><div class="val"><div class="chips" id="bad"></div></div></div>
+      </div>
+      <div class="bodybox" id="bodybox">
+        <div class="bguide">상단의 <b>［결재요청］</b> 또는 아래 <b>［결재요청］</b> 버튼을 누르면,<br>오늘 조건에 맞는 술집 안건을 결재합니다.</div>
+      </div>
+
+      <div class="submit-wrap"><button class="submit" onclick="submitDraft()">결 재 요 청</button></div>
+    </div>
+  </div>
+
+  <!-- ===== 업장 관리대장 (개인 기록 + 공용 명부) ===== -->
+  <div class="view hide" id="v-list">
+    <div class="sheet">
+      <div class="sample">예시 양식 · SAMPLE</div>
+      <div class="title" style="font-size:18px;letter-spacing:5px">업 장 관 리 대 장</div>
+      <div class="list-tabs" id="list-tabs">
+        <button data-t="방문함" class="on">가본 곳</button>
+        <button data-t="위시">위시</button>
+        <button data-t="pool">공용 명부</button>
+      </div>
+      <div class="lsearch">
+        <button class="btn pri" id="b-add">＋ 신규 등재</button>
+        <select id="lgu"></select>
+        <select id="lcat" class="hide"></select>
+        <input id="lq" type="search" class="hide" placeholder="업장명 검색" autocomplete="off">
+      </div>
+      <div class="lstat" id="lstat"></div>
+      <div id="list"></div>
+      <div class="poolnote">※ 가본 곳·위시 등 개인 기록은 이 기기(IndexedDB)에만 저장됩니다. 공용 명부는 객관 정보만 담긴 읽기 전용입니다.</div>
+    </div>
+  </div>
+
+  <div class="poolnote" id="pool-count"></div>
+</div>
+
+<!-- ===== 취향 진단(온보딩) 오버레이 ===== -->
+<div class="quiz-overlay hide" id="quiz-overlay">
+  <div class="quiz-wrap">
+    <div id="quiz-host"></div>
+    <div class="poolnote">※ 본 진단 응답은 외부로 전송하지 아니하며, 본 기기에 한하여 보관함.</div>
+  </div>
+</div>
+
+<!-- ===== 업장 등재/수정 오버레이 ===== -->
+<div class="quiz-overlay hide" id="rec-overlay">
+  <div class="quiz-wrap">
+    <div id="rec-host"></div>
+    <div class="poolnote">※ 본 기록은 외부로 전송하지 아니하며, 본 기기에 한하여 보관함.</div>
+  </div>
+</div>
+
+<!-- ===== 개인정보·데이터 안내 오버레이 ===== -->
+<div class="quiz-overlay hide" id="info-overlay">
+  <div class="quiz-wrap">
+    <div class="qsheet">
+      <div class="qtitle" style="font-size:16px;letter-spacing:3px">개인정보 · 데이터 안내</div>
+
+      <div class="info-sec">
+        <div class="info-h">▣ 데이터 보관 방침</div>
+        본 서비스는 회원가입·개인정보 수집 없이, 모든 데이터를 이용자 기기(브라우저)에만 저장함.
+        서버 전송·광고·분석툴은 적용하지 아니함. 데이터 삭제는 하단 <b>［전체 초기화］</b>로 직접 수행 가능함.
+      </div>
+
+      <div class="info-sec">
+        <div class="info-h">▣ 수집 최소화 원칙</div>
+        · 위치는 구(區) 수동 선택만 사용하며 GPS 자동 인식은 하지 아니함.<br>
+        · 동행자는 유형만 기재하며 실명은 수집하지 아니함.<br>
+        · 메모란에 타인의 이름·연락처·직장명 등 개인정보 입력을 금함.<br>
+        · 이름·전화번호·생년월일·성별·주소·직장명은 수집하지 아니함.
+      </div>
+
+      <div class="info-sec">
+        <div class="info-h">▣ 데이터 관리</div>
+        <div class="info-desc">기기 변경·백업에 대비하여 데이터를 파일로 내보내고, 다시 가져올 수 있음.</div>
+        <div class="info-btns">
+          <button class="btn" id="info-export">내보내기 (백업)</button>
+          <button class="btn" id="info-import">가져오기 (복원)</button>
+          <button class="btn" id="info-reset" style="color:var(--stamp);border-color:#e3cfca">전체 초기화</button>
+        </div>
+        <input type="file" id="import-file" accept="application/json,.json" style="display:none">
+      </div>
+
+      <div class="info-fine">※ 본 안내는 일반 정보이며 법률 자문이 아님. 공개 전 개인정보보호위원회(privacy.go.kr) 자료 또는 전문가 확인을 권장함.</div>
+
+      <div class="qnav" style="margin-top:14px">
+        <span class="sp" style="flex:1"></span>
+        <button class="btn pri" id="info-close">닫 기</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
