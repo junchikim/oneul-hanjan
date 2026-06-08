@@ -27,6 +27,12 @@ import { recommend } from './recommend.js';
 const $ = id => document.getElementById(id);
 const escAttr = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
+// 외부 연계(친구 피드백 — 실제 위치·사진·리뷰 확인용) — 추천 카드 전용
+//   · 카드 탭 → 네이버 지도에서 "업장명 + 구" 검색 (새 탭)
+//   · 인스타 버튼 → 업장명의 띄어쓰기·특수문자 제거한 해시태그 탐색 (새 탭)
+const naverMapURL  = (name, gu) => `https://map.naver.com/v5/search/${encodeURIComponent(`${name} ${gu}`)}`;
+const instaTagURL  = name => `https://www.instagram.com/explore/tags/${encodeURIComponent(String(name).replace(/[^\p{L}\p{N}]/gu, ''))}`;
+
 // 동행자 / 우대조건 / 반려사유 토큰은 vocab.js 에서 공용 관리(퀴즈·기록과 동일 자)
 
 const state = { loc: '', sit: '', good: new Set(), bad: new Set() };
@@ -145,12 +151,15 @@ function renderResults({ picks, rejected, decay, personalCount }) {
     let tags = '';
     (x.tags.good || []).forEach(g => tags += `<span class="tg g">＋${labelOf(g)}</span>`);
     (x.tags.bad  || []).forEach(b => tags += `<span class="tg b">－${labelOf(b)}</span>`);
-    h += `<div class="acase"><div class="ac-h"><span class="ac-rank">${rk[i] || ('第' + (i + 1) + '案')}</span>
+    h += `<div class="acase tap" data-map="${escAttr(naverMapURL(p.name, p.gu))}" title="탭하면 네이버 지도에서 위치·길찾기 조회">
+      <div class="ac-h"><span class="ac-rank">${rk[i] || ('第' + (i + 1) + '案')}</span>
         <span class="ac-badge ${bd.cls}">${bd.text}</span></div>
       <div class="ac-b"><div class="ac-name">${escAttr(p.name)}</div><div class="ac-cat">${escAttr(p.cat)}</div>
         <div class="ac-loc">소재지 : 서울 ${escAttr(p.gu)} ${escAttr(p.dong)}</div>
         ${tags ? `<div class="ac-tags">${tags}</div>` : ''}
-        <div class="ac-why"><b>추천 사유</b> &nbsp;${x.reason}.</div></div></div>`;
+        <div class="ac-why"><b>추천 사유</b> &nbsp;${x.reason}.</div>
+        <div class="ac-ext"><span class="ac-maphint">🗺 위치·길찾기 조회 ›</span>
+          <button class="ac-insta" data-insta="${escAttr(instaTagURL(p.name))}" title="인스타그램 태그 검색">📷 인스타</button></div></div></div>`;
   });
 
   if (rejected && rejected.length) {
@@ -168,6 +177,18 @@ function renderResults({ picks, rejected, decay, personalCount }) {
 
   B.innerHTML = h;
   B.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// 추천 카드의 외부 연계 클릭 — 이벤트 위임(반려 카드엔 .tap 없음 → 링크 없음)
+function onResultClick(e) {
+  const insta = e.target.closest('.ac-insta');
+  if (insta) {
+    e.stopPropagation();                       // 인스타 클릭이 카드 탭(지도)으로 번지지 않게
+    window.open(insta.dataset.insta, '_blank', 'noopener');
+    return;
+  }
+  const card = e.target.closest('.acase.tap');
+  if (card && card.dataset.map) window.open(card.dataset.map, '_blank', 'noopener');
 }
 
 // ── 업장 관리대장 (개인 기록 + 공용 명부) ─────────────────────
@@ -399,6 +420,7 @@ async function boot() {
   buildChips('sit', SITS, 'sit');
   buildChips('good', GOODS, 'good');
   buildChips('bad', BADS, 'bad', true);
+  $('bodybox').addEventListener('click', onResultClick); // 추천 카드 외부 연계
 
   // 목록 화면 구성
   fillListFilters();
