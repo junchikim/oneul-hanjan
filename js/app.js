@@ -33,6 +33,10 @@ const escAttr = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': 
 const naverMapURL  = (name, gu) => `https://map.naver.com/v5/search/${encodeURIComponent(`${name} ${gu}`)}`;
 const instaTagURL  = name => `https://www.instagram.com/explore/tags/${encodeURIComponent(String(name).replace(/[^\p{L}\p{N}]/gu, ''))}`;
 
+// 마지막 추천 결과 보존 키 — 외부 링크(지도/인스타)로 이동 후 복귀 시
+// 모바일에서 페이지가 리로드되어 화면이 초기화되는 것을 막기 위해 세션에 저장한다.
+const LAST_KEY = 'ohj.lastResult';
+
 // 동행자 / 우대조건 / 반려사유 토큰은 vocab.js 에서 공용 관리(퀴즈·기록과 동일 자)
 
 const state = { loc: '', sit: '', good: new Set(), bad: new Set() };
@@ -126,11 +130,44 @@ function submitDraft() {
     today: { loc: state.loc, sit: state.sit, good: [...state.good], bad: [...state.bad] },
     limit: 3,
   });
+  persistResult(result);   // 외부 링크 복귀 시 복원용으로 세션에 보존
   // 결재 승인 도장 연출(약 0.5초) 후 결과 렌더 + 결재란 도장
   playApproveStamp(() => {
     renderResults(result);
     $('st-org').classList.add('on');
   });
+}
+
+// 마지막 추천 결과 + 기안 조건을 세션에 저장(복귀 시 복원)
+function persistResult(result) {
+  try {
+    sessionStorage.setItem(LAST_KEY, JSON.stringify({
+      state: { loc: state.loc, sit: state.sit, good: [...state.good], bad: [...state.bad] },
+      result,
+    }));
+  } catch { /* 세션 저장 불가 환경은 조용히 무시 */ }
+}
+
+// 페이지 복귀(리로드)로 진입했을 때, 저장된 결과가 있으면 조건·카드를 복원한다
+function restoreLastResult() {
+  let saved;
+  try { saved = JSON.parse(sessionStorage.getItem(LAST_KEY) || 'null'); } catch { saved = null; }
+  if (!saved || !saved.result) return false;
+
+  const s = saved.state || {};
+  state.loc = s.loc || '';
+  state.sit = s.sit || '';
+  state.good = new Set(s.good || []);
+  state.bad  = new Set(s.bad  || []);
+  if (state.loc) $('loc').value = state.loc;
+  syncChips('sit', state.sit ? new Set([state.sit]) : new Set());
+  syncChips('good', state.good);
+  syncChips('bad', state.bad);
+  updSubj();
+
+  renderResults(saved.result, { animate: false });  // 복원은 연출 없이 즉시 표시
+  $('st-org').classList.add('on');
+  return true;
 }
 
 // 화면 중앙 "승인" 도장이 회전하며 쾅 박힌 뒤 결과를 펼친다
@@ -152,26 +189,28 @@ const SOURCE_BADGE = {
   'pool':   { cls: 'new',   text: '공용 명부' },
 };
 
-function renderResults({ picks, rejected, decay, personalCount }) {
+function renderResults({ picks, rejected, decay, personalCount }, { animate = true } = {}) {
   const B = $('bodybox');
   if (!picks.length) {
     B.innerHTML = `<div class="bguide">「${state.loc}」 관내 상신 가능한 안건이 없습니다.<br>관리대장에서 위시·가본 곳을 등재하거나, 다른 지역(구)을 선택해 주십시오.</div>`;
-    B.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (animate) B.scrollIntoView({ behavior: 'smooth', block: 'center' });
     return;
   }
   const rk = ['第1案', '第2案', '第3案'];
   let h = `<div class="rbanner">▣ 결재 검토 결과 — ${state.loc} 관내 추천 ${picks.length}건</div>`;
 
-  // 카드 순차 등장(0.1초 간격) — 추천·반려 통틀어 위에서부터 차례로 fade-in
+  // 카드 순차 등장(0.28초 간격) — 추천·반려 통틀어 위에서부터 한 장씩 쌓이듯
+  // 복원(animate:false) 시에는 연출 없이 즉시 표시.
   let n = 0;
-  const stagger = () => `style="animation-delay:${(n++ * 0.1).toFixed(2)}s"`;
+  const ent = animate ? ' enter' : '';
+  const stagger = () => animate ? `style="animation-delay:${(n++ * 0.28).toFixed(2)}s"` : '';
 
   picks.forEach((x, i) => {
     const p = x.item, bd = SOURCE_BADGE[x.source] || SOURCE_BADGE.pool;
     let tags = '';
     (x.tags.good || []).forEach(g => tags += `<span class="tg g">＋${labelOf(g)}</span>`);
     (x.tags.bad  || []).forEach(b => tags += `<span class="tg b">－${labelOf(b)}</span>`);
-    h += `<div class="acase tap enter" ${stagger()} data-map="${escAttr(naverMapURL(p.name, p.gu))}" title="탭하면 네이버 지도에서 위치·길찾기 조회">
+    h += `<div class="acase tap${ent}" ${stagger()} data-map="${escAttr(naverMapURL(p.name, p.gu))}" title="탭하면 네이버 지도에서 위치·길찾기 조회">
       <div class="ac-h"><span class="ac-rank">${rk[i] || ('第' + (i + 1) + '案')}</span>
         <span class="ac-badge ${bd.cls}">${bd.text}</span></div>
       <div class="ac-b"><div class="ac-name">${escAttr(p.name)}</div><div class="ac-cat">${escAttr(p.cat)}</div>
@@ -185,7 +224,7 @@ function renderResults({ picks, rejected, decay, personalCount }) {
   if (rejected && rejected.length) {
     h += `<div class="rbanner" style="color:var(--sub)">▣ 반려 안건 ${rejected.length}건</div>`;
     rejected.forEach(r => {
-      h += `<div class="acase enter" ${stagger()}><div class="ac-b" style="padding:9px 12px">
+      h += `<div class="acase${ent}" ${stagger()}><div class="ac-b" style="padding:9px 12px">
         <div class="ac-name" style="font-size:13px;color:var(--sub)">${escAttr(r.name)} <span class="ac-cat">${escAttr(r.cat)}</span></div>
         <div class="ac-why" style="background:#fdf6f5;border-color:#e3cfca"><b style="color:var(--stamp)">반려 사유</b> &nbsp;${r.reason}.</div></div></div>`;
     });
@@ -196,7 +235,7 @@ function renderResults({ picks, rejected, decay, personalCount }) {
   h += `<div class="bguide" style="border-top:1px solid var(--line2)">본인 등재 <b>${personalCount}</b>건 · 공용 풀 가중 <b>${pct}%</b> 적용${personalCount >= 30 ? ' (개인 데이터 중심)' : ''}.</div>`;
 
   B.innerHTML = h;
-  B.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  if (animate) B.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // 추천 카드의 외부 연계 클릭 — 이벤트 위임(반려 카드엔 .tap 없음 → 링크 없음)
@@ -471,7 +510,9 @@ async function boot() {
     console.warn('IndexedDB 사용 불가:', e);
   }
   if (profile) applyProfileToDraft();
-  else openQuiz(false);
+  // 외부 링크 복귀 등으로 리로드된 경우, 저장된 추천 결과를 그대로 복원
+  const restored = restoreLastResult();
+  if (!profile && !restored) openQuiz(false);
 }
 
 // 버튼 onclick 에서 부르는 전역 핸들러
